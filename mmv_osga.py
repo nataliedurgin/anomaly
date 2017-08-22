@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import time
+from statsmodels.stats.proportion import proportion_confint
 
 """
 N Number of random variables in the signal
@@ -16,7 +17,7 @@ sigma1 variance of the anomalous distribution
 
 
 class MMVOSGA:
-    def __init__(self, N, T, M, K, mu0, mu1, sigma0, sigma1, runs):
+    def __init__(self, N, T, M, K, mu0, mu1, sigma0, sigma1, thresh, conf=True):
         self.N = N
         self.T = T
         self.M = M
@@ -25,8 +26,27 @@ class MMVOSGA:
         self.mu1 = mu1
         self.sigma0 = sigma0
         self.sigma1 = sigma1
-        self.runs = runs
-        self.times = []
+        self.idxT = np.arange(1, self.T + 1, 1)
+        self.idxM = np.arange(1, self.M + 1, 1)
+        self.conf = conf #True if we should use a binomial proportion
+                         #confidence interval as a stopping condition
+                         #False if we should just use a hard cutoff
+        # TODO: Reject threshold if not in (0,1) when conf=True
+        # TODO: Reject threshold if not > 0 when conf=False
+        self.thresh = thresh #Int number of runs if conf=False,
+                             #else float in (0,1): interval length tolerance
+
+
+    # Stopping condition
+    def keep_going(self, successes, trials):
+        # Based on binomial proportion confidence interval
+        if self.conf:
+            low, high = proportion_confint(successes, trials, method='jeffreys')
+            return high-low > self.thresh
+        # Based on a hard threshold
+        else:
+            return trials < self.thresh
+
 
     # Construct the NxT signal with K anomalous rows
     def get_signal(self, N, T, K):
@@ -53,6 +73,26 @@ class MMVOSGA:
         support_predicted = set(xi.argsort()[-K:][::-1])
         return support, support_predicted, int(support == support_predicted)
 
+    def record_experiment(self, m_times, m_scores, m_runs):
+        np.savetxt('results/runs_N%s_T%s_M%s_K%s_runs%s.csv' % (
+            self.N, self.T, self.M, self.K, self.thresh),
+                   m_runs, delimiter=',')
+        np.savetxt('results/times_N%s_T%s_M%s_K%s_runs%s.csv' % (
+            self.N, self.T, self.M, self.K, self.thresh),
+                   m_times, delimiter=',')
+        np.savetxt('results/scores_N%s_T%s_M%s_K%s_runs%s.csv' % (
+            self.N, self.T, self.M, self.K, self.thresh),
+                   m_scores, delimiter=',')
+        sns.heatmap(np.matrix(m_scores), square=True,
+                    xticklabels=self.idxT,
+                    yticklabels=self.idxM,
+                    cbar=False)
+        plt.xlabel('t')
+        plt.ylabel('m')
+        plt.title('K=%s' % self.K)
+        plt.savefig('results/OSGA_N%s_T%s_M%s_K%s_runs%s.pdf' % (
+            self.N, self.T, self.M, self.K, self.thresh))
+
     def run_experiment(self):
         """
         Records:
@@ -60,45 +100,36 @@ class MMVOSGA:
         2) A file containing the recovery scores for the simulation
         3) A heat-map image of the recovery scores
         """
-        idxT = np.arange(1, self.T + 1, 1)
-        idxM = np.arange(1, self.M + 1, 1)
-        m_scores = []
         m_times = []
-        for m in idxM:
+        m_scores = []
+        m_runs = []
+        for m in self.idxM:
             time_m0 = time.time()
-            t_scores = []
             t_times = []
-            for t in idxT:
+            t_scores = []
+            t_runs = []
+            for t in self.idxT:
                 time_t0 = time.time()
                 success_count = 0
-                for r in range(self.runs):
+                trial_count = 0
+                keep_going = True
+                while keep_going:
                     _, _, is_success = \
                         self.recover_support(self.N, t, m, self.K)
+                    trial_count += 1
                     success_count += is_success
-                t_scores.append(success_count / float(self.runs))
+                    keep_going = self.keep_going(success_count, trial_count)
+                t_runs.append(trial_count)
+                t_scores.append(success_count / float(trial_count))
                 time_t1 = time.time()
                 t_times.append(time_t1-time_t0)
             time_m1= time.time()
             print(time_m1-time_m0)
-            m_times.append(t_times)
+            m_runs.append(t_runs)
             m_scores.append(t_scores)
-        np.savetxt('times_N%s_T%s_M%s_K%s_runs%s.csv'%(
-            self.N, self.T, self.M, self.K, self.runs),
-                   m_times, delimiter=',')
-        np.savetxt('scores_N%s_T%s_M%s_K%s_runs%s.csv'%(
-            self.N, self.T, self.M, self.K, self.runs),
-                   m_scores, delimiter=',')
-        sns.heatmap(np.matrix(m_scores), square=True,
-                    xticklabels=idxT,
-                    yticklabels=idxM,
-                    cbar=False)
-        plt.xlabel('t')
-        plt.ylabel('m')
-        plt.title('K=%s' % self.K)
-        plt.savefig('OSGA_N%s_T%s_M%s_K%s_runs%s' % (
-            self.N, self.T, self.M, self.K, self.runs))
+            m_times.append(t_times)
+        self.record_experiment(m_times,m_scores,m_runs)
 
 
 if __name__ == '__main__':
-    for k in np.arange(1, 11, 1):
-        MMVOSGA(100, 100, 100, k, 0, 7, 1, 1, 100).run_experiment()
+    MMVOSGA(100, 5, 5, 1, 0, 7, 1, 1, 0.1).run_experiment()
