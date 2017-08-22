@@ -1,8 +1,5 @@
 import numpy as np
-from sklearn import linear_model
-from sklearn.linear_model import LassoCV
 import matplotlib.pyplot as plt
-import pandas as pd
 import seaborn as sns
 import time
 
