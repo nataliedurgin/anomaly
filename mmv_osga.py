@@ -91,6 +91,13 @@ class MMVOSGA:
         return support, support_predicted, int(support == support_predicted)
 
     def record_experiment(self, m_times, m_scores, m_runs):
+        """
+        Records:
+        -) The number of runs taken to return the success proportion
+        -) The time it took for the simulation to run
+        -) A file containing the recovery scores for the simulation
+        -) A heat-map image of the recovery scores
+        """
         np.savetxt('results/runs_N%s_T%s_M%s_K%s_runs%s_tv%s.csv' % (
             self.N, self.T, self.M, self.K, self.thresh, self.t_var),
                    m_runs, delimiter=',')
@@ -111,12 +118,6 @@ class MMVOSGA:
             self.N, self.T, self.M, self.K, self.thresh, self.t_var))
 
     def run_experiment(self):
-        """
-        Records:
-        1) The time it took for the simulation to run
-        2) A file containing the recovery scores for the simulation
-        3) A heat-map image of the recovery scores
-        """
         m_times = []
         m_scores = []
         m_runs = []
@@ -149,5 +150,5 @@ class MMVOSGA:
 
 
 if __name__ == '__main__':
-    MMVOSGA(100, 10, 10, 1, 0, 7, 1, 1, 100,
+    MMVOSGA(100, 50, 50, 1, 0, 7, 1, 1, 100,
             conf=False, t_var=False).run_experiment()
