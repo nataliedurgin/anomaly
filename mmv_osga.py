@@ -17,7 +17,8 @@ sigma1 variance of the anomalous distribution
 
 
 class MMVOSGA:
-    def __init__(self, N, T, M, K, mu0, mu1, sigma0, sigma1, thresh, conf=True):
+    def __init__(self, N, T, M, K, mu0, mu1, sigma0, sigma1, thresh,
+                 conf=True):
         self.N = N
         self.T = T
         self.M = M
@@ -28,25 +29,28 @@ class MMVOSGA:
         self.sigma1 = sigma1
         self.idxT = np.arange(1, self.T + 1, 1)
         self.idxM = np.arange(1, self.M + 1, 1)
-        self.conf = conf #True if we should use a binomial proportion
-                         #confidence interval as a stopping condition
-                         #False if we should just use a hard cutoff
-        # TODO: Reject threshold if not in (0,1) when conf=True
-        # TODO: Reject threshold if not > 0 when conf=False
-        self.thresh = thresh #Int number of runs if conf=False,
-                             #else float in (0,1): interval length tolerance
 
+        # True if we should use a binomial proportion
+        # confidence interval as a stopping condition
+        # False if we should just use a hard cutoff
+        self.conf = conf
+
+        # TODO: Reject threshold if not in (0,1) when conf=True
+        # TODO: Reject threshold if not > 1 when conf=False
+        # Int number of runs if conf=False,
+        # else float in (0,1): interval length tolerance
+        self.thresh = thresh
 
     # Stopping condition
     def keep_going(self, successes, trials):
         # Based on binomial proportion confidence interval
         if self.conf:
-            low, high = proportion_confint(successes, trials, method='jeffreys')
-            return high-low > self.thresh
+            low, high = proportion_confint(successes, trials,
+                                           method='jeffreys')
+            return high - low > self.thresh
         # Based on a hard threshold
         else:
             return trials < self.thresh
-
 
     # Construct the NxT signal with K anomalous rows
     def get_signal(self, N, T, K):
@@ -122,14 +126,14 @@ class MMVOSGA:
                 t_runs.append(trial_count)
                 t_scores.append(success_count / float(trial_count))
                 time_t1 = time.time()
-                t_times.append(time_t1-time_t0)
-            time_m1= time.time()
-            print(time_m1-time_m0)
+                t_times.append(time_t1 - time_t0)
+            time_m1 = time.time()
+            print(time_m1 - time_m0)
             m_runs.append(t_runs)
             m_scores.append(t_scores)
             m_times.append(t_times)
-        self.record_experiment(m_times,m_scores,m_runs)
+        self.record_experiment(m_times, m_scores, m_runs)
 
 
 if __name__ == '__main__':
-    MMVOSGA(100, 50, 50, 1, 0, 7, 1, 1, 0.1).run_experiment()
+    MMVOSGA(100, 50, 50, 1, 0, 7, 1, 1, 100, conf=False).run_experiment()
