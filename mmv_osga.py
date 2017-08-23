@@ -86,7 +86,7 @@ class MMVOSGA:
         sns.heatmap(np.matrix(m_scores), square=True,
                     xticklabels=self.idxT,
                     yticklabels=self.idxM,
-                    cbar=False)
+                    cbar=True)
         plt.xlabel('t')
         plt.ylabel('m')
         plt.title('K=%s' % self.K)
@@ -132,4 +132,4 @@ class MMVOSGA:
 
 
 if __name__ == '__main__':
-    MMVOSGA(100, 5, 5, 1, 0, 7, 1, 1, 0.1).run_experiment()
+    MMVOSGA(100, 50, 50, 1, 0, 7, 1, 1, 0.1).run_experiment()
