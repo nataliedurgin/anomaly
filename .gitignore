@@ -156,6 +156,7 @@ flycheck_*.el
 .idea/*
 .idea/workspace.xml
 .idea/tasks.xml
+.DS_Store
 
 # Sensitive or high-churn files:
 .idea/dataSources/
