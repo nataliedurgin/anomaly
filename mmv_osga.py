@@ -17,7 +17,8 @@ sigma1 variance of the anomalous distribution
 
 
 class MMVOSGA:
-    def __init__(self, N, T, M, K, mu0, mu1, sigma0, sigma1, thresh, conf=True):
+    def __init__(self, N, T, M, K, mu0, mu1, sigma0, sigma1,
+                 thresh, conf=True, t_var=True):
         self.N = N
         self.T = T
         self.M = M
@@ -32,9 +33,11 @@ class MMVOSGA:
                          #confidence interval as a stopping condition
                          #False if we should just use a hard cutoff
         # TODO: Reject threshold if not in (0,1) when conf=True
-        # TODO: Reject threshold if not > 0 when conf=False
+        # TODO: Reject threshold if not >= 1 when conf=False
         self.thresh = thresh #Int number of runs if conf=False,
                              #else float in (0,1): interval length tolerance
+        self.t_var=t_var #True if we should use time-varying measurements
+                         #False if we should use fixed-time measurements
 
 
     # Stopping condition
@@ -58,7 +61,15 @@ class MMVOSGA:
 
     # Construct a Gaussian TxMxN measurement matrix
     def get_measurement_matrix(self, N, T, M):
-        return np.random.normal(0, 1, (T, M, N))
+        # If time varying measurements, then generate a different measurement
+        # matrix for each time-step
+        if self.t_var:
+            return np.random.normal(0, 1, (T, M, N))
+        # If fixed time measurements, then reuse the same measurement
+        # matrix for each time-step
+        else:
+            m = np.random.normal(0, 1, (M, N))
+            return np.array([m for t in range(T)])
 
     # Run a single signal recovery experiment and return the results
     def recover_support(self, N, T, M, K):
@@ -74,14 +85,14 @@ class MMVOSGA:
         return support, support_predicted, int(support == support_predicted)
 
     def record_experiment(self, m_times, m_scores, m_runs):
-        np.savetxt('results/runs_N%s_T%s_M%s_K%s_runs%s.csv' % (
-            self.N, self.T, self.M, self.K, self.thresh),
+        np.savetxt('results/runs_N%s_T%s_M%s_K%s_runs%s_tv%s.csv' % (
+            self.N, self.T, self.M, self.K, self.thresh, self.t_var),
                    m_runs, delimiter=',')
-        np.savetxt('results/times_N%s_T%s_M%s_K%s_runs%s.csv' % (
-            self.N, self.T, self.M, self.K, self.thresh),
+        np.savetxt('results/times_N%s_T%s_M%s_K%s_runs%s_tv%s.csv' % (
+            self.N, self.T, self.M, self.K, self.thresh, self.t_var),
                    m_times, delimiter=',')
-        np.savetxt('results/scores_N%s_T%s_M%s_K%s_runs%s.csv' % (
-            self.N, self.T, self.M, self.K, self.thresh),
+        np.savetxt('results/scores_N%s_T%s_M%s_K%s_runs%s_tv%s.csv' % (
+            self.N, self.T, self.M, self.K, self.thresh, self.t_var),
                    m_scores, delimiter=',')
         sns.heatmap(np.matrix(m_scores), square=True,
                     xticklabels=self.idxT,
@@ -90,8 +101,8 @@ class MMVOSGA:
         plt.xlabel('t')
         plt.ylabel('m')
         plt.title('K=%s' % self.K)
-        plt.savefig('results/OSGA_N%s_T%s_M%s_K%s_runs%s.pdf' % (
-            self.N, self.T, self.M, self.K, self.thresh))
+        plt.savefig('results/OSGA_N%s_T%s_M%s_K%s_runs%s_tv%s.pdf' % (
+            self.N, self.T, self.M, self.K, self.thresh, self.t_var))
 
     def run_experiment(self):
         """
@@ -132,4 +143,5 @@ class MMVOSGA:
 
 
 if __name__ == '__main__':
-    MMVOSGA(100, 50, 50, 1, 0, 7, 1, 1, 0.1).run_experiment()
+    MMVOSGA(100, 50, 50, 1, 0, 7, 1, 1, 100,
+            conf=False, t_var=False).run_experiment()
