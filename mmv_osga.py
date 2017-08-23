@@ -150,5 +150,5 @@ class MMVOSGA:
 
 
 if __name__ == '__main__':
-    MMVOSGA(100, 50, 50, 1, 0, 7, 1, 1, 100,
-            conf=False, t_var=False).run_experiment()
+    MMVOSGA(100, 50, 50, 1, 0, 7, 1, 1, 0.1,
+            conf=True, t_var=False).run_experiment()
