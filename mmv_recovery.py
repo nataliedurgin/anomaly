@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import time
+from sklearn.linear_model import Lasso
 from statsmodels.stats.proportion import proportion_confint
 
 """
@@ -16,9 +17,9 @@ sigma1 variance of the anomalous distribution
 """
 
 
-class MMVOSGA:
+class MmvRecovery:
     def __init__(self, N, T, M, K, mu0, mu1, sigma0, sigma1,
-                 thresh, conf=True, t_var=True):
+                 thresh, conf=True, t_var=True, alg="lasso"):
         self.N = N
         self.T = T
         self.M = M
@@ -44,6 +45,9 @@ class MMVOSGA:
         # True if we should use time-varying measurements
         # False if we should use fixed-time measurements
         self.t_var = t_var
+
+        # Choose "osga" or "lasso" as the recovery algorithm
+        self.alg=alg
 
 
 # Stopping condition
@@ -78,7 +82,7 @@ class MMVOSGA:
             return np.array([m for t in range(T)])
 
     # Run a single signal recovery experiment and return the results
-    def recover_support(self, N, T, M, K):
+    def recover_support_osga(self, N, T, M, K):
         X, support = self.get_signal(N, T, K)
         phi = self.get_measurement_matrix(N, T, M)
         y = np.array([np.dot(phi[t], X[:, t]) for t in range(T)])
@@ -86,6 +90,19 @@ class MMVOSGA:
             [np.dot(y[t].T, phi[t, :, n]) ** 2
              for t in range(T)])
                        for n in range(N)])
+        support = set(support)
+        support_predicted = set(xi.argsort()[-K:][::-1])
+        return support, support_predicted, int(support == support_predicted)
+
+    def recover_support_lasso(self, N, T, M, K):
+        X, support = self.get_signal(N, T, K)
+        phi = self.get_measurement_matrix(N, T, M)
+        y = np.array([np.dot(phi[t], X[:, t]) for t in range(T)])
+        phi = phi.reshape(T*M, N)
+        y = y.reshape(T*M,)
+        clf = Lasso()
+        clf.fit(phi, y)
+        xi = clf.coef_
         support = set(support)
         support_predicted = set(xi.argsort()[-K:][::-1])
         return support, support_predicted, int(support == support_predicted)
@@ -98,14 +115,14 @@ class MMVOSGA:
         -) A file containing the recovery scores for the simulation
         -) A heat-map image of the recovery scores
         """
-        np.savetxt('results/runs_N%s_T%s_M%s_K%s_runs%s_tv%s.csv' % (
-            self.N, self.T, self.M, self.K, self.thresh, self.t_var),
+        np.savetxt('results/%s_runs_N%s_T%s_M%s_K%s_runs%s_tv%s.csv' % (
+            self.alg, self.N, self.T, self.M, self.K, self.thresh, self.t_var),
                    m_runs, delimiter=',')
-        np.savetxt('results/times_N%s_T%s_M%s_K%s_runs%s_tv%s.csv' % (
-            self.N, self.T, self.M, self.K, self.thresh, self.t_var),
+        np.savetxt('results/%s_times_N%s_T%s_M%s_K%s_runs%s_tv%s.csv' % (
+            self.alg, self.N, self.T, self.M, self.K, self.thresh, self.t_var),
                    m_times, delimiter=',')
-        np.savetxt('results/scores_N%s_T%s_M%s_K%s_runs%s_tv%s.csv' % (
-            self.N, self.T, self.M, self.K, self.thresh, self.t_var),
+        np.savetxt('results/%s_scores_N%s_T%s_M%s_K%s_runs%s_tv%s.csv' % (
+            self.alg, self.N, self.T, self.M, self.K, self.thresh, self.t_var),
                    m_scores, delimiter=',')
         sns.heatmap(np.matrix(m_scores), square=True,
                     xticklabels=self.idxT,
@@ -114,8 +131,8 @@ class MMVOSGA:
         plt.xlabel('t')
         plt.ylabel('m')
         plt.title('K=%s' % self.K)
-        plt.savefig('results/OSGA_N%s_T%s_M%s_K%s_runs%s_tv%s.pdf' % (
-            self.N, self.T, self.M, self.K, self.thresh, self.t_var))
+        plt.savefig('results/%s_N%s_T%s_M%s_K%s_runs%s_tv%s.pdf' % (
+            self.alg, self.N, self.T, self.M, self.K, self.thresh, self.t_var))
 
     def run_experiment(self):
         m_times = []
@@ -133,7 +150,7 @@ class MMVOSGA:
                 keep_going = True
                 while keep_going:
                     _, _, is_success = \
-                        self.recover_support(self.N, t, m, self.K)
+                        self.recover_support_lasso(self.N, t, m, self.K)
                     trial_count += 1
                     success_count += is_success
                     keep_going = self.keep_going(success_count, trial_count)
@@ -150,5 +167,6 @@ class MMVOSGA:
 
 
 if __name__ == '__main__':
-    MMVOSGA(100, 100, 100, 1, 0, 7, 1, 1, 0.1,
-            conf=True, t_var=True).run_experiment()
+    for k in [1,2,5,10]:
+        MmvRecovery(100, 50, 50, k, 0, 7, 1, 1, 0.1,
+                    conf=True, t_var=True, alg="lasso").run_experiment()
