@@ -142,7 +142,7 @@ class MMVOSGA:
                 time_t1 = time.time()
                 t_times.append(time_t1 - time_t0)
             time_m1 = time.time()
-            print(time_m1 - time_m0)
+            print(m, time_m1 - time_m0)
             m_runs.append(t_runs)
             m_scores.append(t_scores)
             m_times.append(t_times)
@@ -150,5 +150,5 @@ class MMVOSGA:
 
 
 if __name__ == '__main__':
-    MMVOSGA(100, 50, 50, 1, 0, 7, 1, 1, 0.1,
-            conf=True, t_var=False).run_experiment()
+    MMVOSGA(100, 100, 100, 1, 0, 7, 1, 1, 0.1,
+            conf=True, t_var=True).run_experiment()
