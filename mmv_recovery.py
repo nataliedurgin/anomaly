@@ -1,4 +1,5 @@
 import numpy as np
+from numpy import linalg as LA
 import matplotlib.pyplot as plt
 import seaborn as sns
 import time
@@ -46,7 +47,7 @@ class MmvRecovery:
         # False if we should use fixed-time measurements
         self.t_var = t_var
 
-        # Choose "osga" or "lasso" as the recovery algorithm
+        # Choose "osga", "lasso" or "somp" as the recovery algorithm
         self.alg=alg
 
 
@@ -105,7 +106,53 @@ class MmvRecovery:
         xi = clf.coef_
         support = set(support)
         support_predicted = set(xi.argsort()[-K:][::-1])
-        return support, support_predicted, int(support == support_predicted)
+        return xi, support, support_predicted, int(support == support_predicted)
+
+
+    # TODO: Is this method of recovery different from the greedy if we just
+    # want to recover the support? ...Yes slightly...The first grab is kind
+    # of the same but the subsequent grabs are more focused?
+    def recover_support_somp(self, N, T, M, K):
+        # Initialize the problem
+        X, support = self.get_signal(N, T, K)
+        phi = self.get_measurement_matrix(N, T, M)
+        y = np.array([np.dot(phi[t], X[:, t]) for t in range(T)])
+
+        # Initialize counters and estimates
+        max_iter = K
+        residuals = y
+        support_hat = set()
+        gamma = np.zeros((T, M, max_iter))
+
+        # Select the dictionary vector that maximizes the value of the sum
+        # of the magnitudes of the projections of the residual
+        # Add its index to the set of selected indices
+        for l in range(max_iter):
+            n = np.argmax([np.sum([np.abs(np.dot(
+                residuals[t].T, phi[t, :, n])) / LA.norm(phi[t, :, n])
+                                   for t in range(T)]) for n in range(N)])
+            support_hat.add(n)
+
+            # Orthogonalize
+            if l == 0:
+                gamma[:, :, 0] = phi[:, :, n]
+            else:
+                gamma[:, :, l] = [phi[t, :, n] - [
+                    (np.dot(phi[t, :, n], gamma[t, :, i]) / (
+                        np.dot(gamma[t, :, i],
+                               gamma[t, :, i]))) * gamma[t, :, i]
+                    for i in range(l)] for t in range(T)]
+
+            # Update residuals
+            residuals -= np.array(
+                [(np.dot(residuals[t].T, gamma[t, :, l]) /
+                  np.dot(gamma[t, :, l], gamma[t, :, l])) * gamma[t, :, l]
+                 for t in range(T)]).reshape(T, M, 1)
+
+            support = set(support)
+
+        return support, support_hat, int(support==support_hat)
+
 
     def record_experiment(self, m_times, m_scores, m_runs):
         """
@@ -127,7 +174,7 @@ class MmvRecovery:
         sns.heatmap(np.matrix(m_scores), square=True,
                     xticklabels=self.idxT,
                     yticklabels=self.idxM,
-                    cbar=True)
+                    cbar=False)
         plt.xlabel('t')
         plt.ylabel('m')
         plt.title('K=%s' % self.K)
@@ -150,7 +197,7 @@ class MmvRecovery:
                 keep_going = True
                 while keep_going:
                     _, _, is_success = \
-                        self.recover_support_lasso(self.N, t, m, self.K)
+                        self.recover_support_somp(self.N, t, m, self.K)
                     trial_count += 1
                     success_count += is_success
                     keep_going = self.keep_going(success_count, trial_count)
@@ -169,4 +216,4 @@ class MmvRecovery:
 if __name__ == '__main__':
     for k in [1,2,5,10]:
         MmvRecovery(100, 50, 50, k, 0, 7, 1, 1, 0.1,
-                    conf=True, t_var=True, alg="lasso").run_experiment()
+                    conf=True, t_var=True, alg="somp").run_experiment()
