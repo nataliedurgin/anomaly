@@ -106,7 +106,7 @@ class MmvRecovery:
         xi = clf.coef_
         support = set(support)
         support_predicted = set(xi.argsort()[-K:][::-1])
-        return xi, support, support_predicted, int(support == support_predicted)
+        return support, support_predicted, int(support == support_predicted)
 
 
     # TODO: Is this method of recovery different from the greedy if we just
@@ -121,7 +121,7 @@ class MmvRecovery:
         # Initialize counters and estimates
         max_iter = K
         residuals = y
-        support_hat = set()
+        support_predicted = set()
         gamma = np.zeros((T, M, max_iter))
 
         # Select the dictionary vector that maximizes the value of the sum
@@ -131,7 +131,7 @@ class MmvRecovery:
             n = np.argmax([np.sum([np.abs(np.dot(
                 residuals[t].T, phi[t, :, n])) / LA.norm(phi[t, :, n])
                                    for t in range(T)]) for n in range(N)])
-            support_hat.add(n)
+            support_predicted.add(n)
 
             # Orthogonalize
             if l == 0:
@@ -151,7 +151,7 @@ class MmvRecovery:
 
             support = set(support)
 
-        return support, support_hat, int(support==support_hat)
+        return support, support_predicted, int(support==support_predicted)
 
 
     def record_experiment(self, m_times, m_scores, m_runs):
