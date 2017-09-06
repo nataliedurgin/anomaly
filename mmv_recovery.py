@@ -88,8 +88,7 @@ class MmvRecovery:
         y = np.array([np.dot(phi[t], X[:, t]) for t in range(T)])
         xi = np.array([1 / float(T) * np.sum(
             [np.dot(y[t].T, phi[t, :, n]) ** 2
-             for t in range(T)])
-                       for n in range(N)])
+             for t in range(T)]) for n in range(N)])
         support = set(support)
         support_predicted = set(xi.argsort()[-K:][::-1])
         return support, support_predicted, int(support == support_predicted)
@@ -126,29 +125,28 @@ class MmvRecovery:
         # of the magnitudes of the projections of the residual
         # Add its index to the set of selected indices
         for l in range(max_iter):
-            n = np.argmax([np.sum([np.abs(np.dot(
+            nl = np.argmax([np.sum([np.abs(np.dot(
                 residuals[t].T, phi[t, :, n])) / LA.norm(phi[t, :, n])
                                    for t in range(T)]) for n in range(N)])
-            support_predicted.add(n)
+            support_predicted.add(nl)
 
             # Orthogonalize
             if l == 0:
-                gamma[:, :, 0] = phi[:, :, n]
+                gamma[:, :, 0] = phi[:, :, nl]
             else:
-                gamma[:, :, l] = [phi[t, :, n] - [
-                    (np.dot(phi[t, :, n], gamma[t, :, i]) / (
+                gamma[:, :, l] = [phi[t, :, nl] - np.sum([
+                    (np.dot(phi[t, :, nl], gamma[t, :, i]) / (
                         np.dot(gamma[t, :, i],
                                gamma[t, :, i]))) * gamma[t, :, i]
-                    for i in range(l)] for t in range(T)]
+                    for i in range(l)]) for t in range(T)]
 
             # Update residuals
             residuals -= np.array(
-                [(np.dot(residuals[t].T, gamma[t, :, l]) /
-                  np.dot(gamma[t, :, l], gamma[t, :, l])) * gamma[t, :, l]
+                [(np.dot(residuals[t].T, gamma[t, :, l]) / np.dot(
+                    gamma[t, :, l], gamma[t, :, l])) * gamma[t, :, l]
                  for t in range(T)]).reshape(T, M, 1)
 
-            support = set(support)
-
+        support = set(support)
         return support, support_predicted, int(support == support_predicted)
 
     def record_experiment(self, m_times, m_scores, m_runs):
@@ -211,6 +209,6 @@ class MmvRecovery:
 
 
 if __name__ == '__main__':
-    for k in [1, 2, 5, 10]:
+    for k in [5,10]:
         MmvRecovery(100, 50, 50, k, 0, 7, 1, 1, 0.1,
                     conf=True, t_var=True, alg="somp").run_experiment()
