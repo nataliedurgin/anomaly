@@ -48,10 +48,9 @@ class MmvRecovery:
         self.t_var = t_var
 
         # Choose "osga", "lasso" or "somp" as the recovery algorithm
-        self.alg=alg
+        self.alg = alg
 
-
-# Stopping condition
+    # Stopping condition
     def keep_going(self, successes, trials):
         # Based on binomial proportion confidence interval
         if self.conf:
@@ -99,15 +98,14 @@ class MmvRecovery:
         X, support = self.get_signal(N, T, K)
         phi = self.get_measurement_matrix(N, T, M)
         y = np.array([np.dot(phi[t], X[:, t]) for t in range(T)])
-        phi = phi.reshape(T*M, N)
-        y = y.reshape(T*M,)
+        phi = phi.reshape(T * M, N)
+        y = y.reshape(T * M, )
         clf = Lasso()
         clf.fit(phi, y)
         xi = clf.coef_
         support = set(support)
         support_predicted = set(xi.argsort()[-K:][::-1])
         return support, support_predicted, int(support == support_predicted)
-
 
     # TODO: Is this method of recovery different from the greedy if we just
     # want to recover the support? ...Yes slightly...The first grab is kind
@@ -151,8 +149,7 @@ class MmvRecovery:
 
             support = set(support)
 
-        return support, support_predicted, int(support==support_predicted)
-
+        return support, support_predicted, int(support == support_predicted)
 
     def record_experiment(self, m_times, m_scores, m_runs):
         """
@@ -214,6 +211,6 @@ class MmvRecovery:
 
 
 if __name__ == '__main__':
-    for k in [1,2,5,10]:
+    for k in [1, 2, 5, 10]:
         MmvRecovery(100, 50, 50, k, 0, 7, 1, 1, 0.1,
                     conf=True, t_var=True, alg="somp").run_experiment()
