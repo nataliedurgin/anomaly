@@ -16,7 +16,7 @@ mu1 mean of the anomalous distribution
 sigma0 variance of the null distribution
 sigma1 variance of the anomalous distribution
 """
-
+# Natalie Durgin 2017/09/19
 
 class MmvRecovery:
     def __init__(self, N, T, M, K, mu0, mu1, sigma0, sigma1,
@@ -106,9 +106,7 @@ class MmvRecovery:
         support_predicted = set(xi.argsort()[-K:][::-1])
         return support, support_predicted, int(support == support_predicted)
 
-    # TODO: Is this method of recovery different from the greedy if we just
-    # want to recover the support? ...Yes slightly...The first grab is kind
-    # of the same but the subsequent grabs are more focused?
+    # TODO: Fix SOMP bug. Unexpected behavior as implemented.
     def recover_support_somp(self, N, T, M, K):
         # Initialize the problem
         X, support = self.get_signal(N, T, K)
